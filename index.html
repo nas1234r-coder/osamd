@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>هيا نقرأ</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: 'Traditional Arabic', 'Arial', sans-serif;
+    background: linear-gradient(135deg, #fef9e7, #eaf6ff);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2vh 4vw;
+    margin: 0;
+    height: 100vh;
+  }
+  h2 { color: #2e5cff; margin: 0 0 1vh; font-size: clamp(1.6em, 3vw, 2.4em); }
+
+  .sentence-box {
+    font-size: clamp(2.4em, 5vw, 4em);
+    background: white;
+    border-radius: 24px;
+    padding: 3vh 4vw;
+    margin: 1.5vh 0;
+    min-height: 12vh;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    max-width: 1200px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.10);
+    line-height: 1.7;
+  }
+  .word {
+    margin: 6px 10px;
+    padding: 4px 12px;
+    border-radius: 12px;
+    transition: all 0.4s;
+  }
+  .word.correct { background: #c8f5d0; color: #1b7a2e; }
+  .word.wrong { background: #f9c8c8; color: #9c1c1c; }
+
+  /* منطقة الدعوة للقراءة */
+  .prompt-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin: 1vh 0;
+    height: 6vh;
+  }
+  .prompt-text {
+    font-size: clamp(1.4em, 2.4vw, 2em);
+    color: #ff6f3c;
+    font-weight: bold;
+  }
+  .arrow-emoji {
+    font-size: clamp(2em, 3.5vw, 3em);
+    animation: bounceRight 1.1s infinite;
+  }
+  @keyframes bounceRight {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(-10px); }
+  }
+
+  /* زر الميكروفون */
+  .mic-btn {
+    width: clamp(90px, 10vw, 140px);
+    height: clamp(90px, 10vw, 140px);
+    border-radius: 50%;
+    border: none;
+    background: #2e5cff;
+    color: white;
+    font-size: clamp(2.4em, 4vw, 3.6em);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 22px rgba(46,92,255,0.4);
+    margin: 1vh 0;
+    position: relative;
+  }
+  .mic-btn.listening {
+    background: #ff4d6d;
+    animation: pulse 1s infinite;
+  }
+  .mic-btn.counting {
+    background: #ffb84d;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255,77,109,0.5); }
+    70% { box-shadow: 0 0 0 26px rgba(255,77,109,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,77,109,0); }
+  }
+  .mic-btn:disabled { background: #aab3c5; box-shadow: none; cursor: not-allowed; }
+
+  .secondary-controls {
+    display: flex;
+    gap: 16px;
+    margin-top: 1.2vh;
+  }
+  .small-btn {
+    font-size: clamp(1em, 1.4vw, 1.3em);
+    padding: 12px 28px;
+    border-radius: 12px;
+    background: white;
+    color: #2e5cff;
+    border: 2px solid #2e5cff;
+    cursor: pointer;
+  }
+
+  #status { font-size: clamp(1em, 1.4vw, 1.3em); color: #777; min-height: 3vh; margin-top: 0.8vh; }
+
+  /* بطاقة النتيجة */
+  .result-card {
+    display: none;
+    background: white;
+    border-radius: 20px;
+    padding: 2vh 3vw;
+    margin-top: 1vh;
+    max-width: 1100px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.10);
+  }
+  .result-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3vw;
+    flex-wrap: wrap;
+  }
+  .big-emoji { font-size: clamp(2.2em, 4vw, 3.4em); }
+  .score-text { font-size: clamp(1.6em, 2.6vw, 2.4em); font-weight: bold; margin: 0; }
+  .score-sub { font-size: clamp(1em, 1.4vw, 1.3em); color: #666; }
+
+  .thermo-body {
+    width: 38px;
+    height: 90px;
+    background: #e6e9ef;
+    border-radius: 18px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: inset 0 0 6px rgba(0,0,0,0.15);
+  }
+  .thermo-fill {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 0%;
+    background: linear-gradient(to top, #ff4d4d, #ffb84d, #4dd671);
+    transition: height 1.2s ease-out;
+    border-radius: 0 0 18px 18px;
+  }
+
+  .playback-box {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .playback-box audio { height: 40px; max-width: 260px; }
+  .heard-text {
+    font-size: clamp(1em, 1.4vw, 1.3em);
+    color: #444;
+    background: #f4f6f8;
+    border-radius: 10px;
+    padding: 8px 14px;
+  }
+  .heard-label { font-size: clamp(0.85em, 1.1vw, 1em); color: #999; }
+</style>
+</head>
+<body>
+
+<h2>هيا نقرأ 📖</h2>
+
+<div class="sentence-box" id="sentenceBox"></div>
+
+<div class="prompt-area" id="promptArea">
+  <span class="prompt-text">هيا اقرأ!</span>
+  <span class="arrow-emoji">👉</span>
+</div>
+
+<button class="mic-btn" id="micBtn">🎤</button>
+
+<div class="secondary-controls">
+  <button class="small-btn" id="listenBtn">🔊 استمع للنموذج</button>
+  <button class="small-btn" id="resetBtn">↺ إعادة</button>
+</div>
+
+<div id="status"></div>
+
+<div class="result-card" id="resultCard">
+  <div class="result-inner">
+    <div class="big-emoji" id="bigEmoji">🙂</div>
+    <div>
+      <div class="score-text" id="scoreText">0%</div>
+      <div class="score-sub" id="scoreSub"></div>
+    </div>
+    <div class="thermo-body"><div class="thermo-fill" id="thermoFill"></div></div>
+    <div class="playback-box">
+      <div>
+        <div class="heard-label">سمع الجهاز:</div>
+        <div class="heard-text" id="heardText">—</div>
+      </div>
+      <audio id="playbackAudio" controls></audio>
+    </div>
+  </div>
+</div>
+
+<audio id="externalAudio" src="audio/sentence1.mp3" preload="auto"></audio>
+
+<script>
+// -----------------------------
+// الجملة المستهدفة
+// -----------------------------
+const targetSentence = "عِنْدَمَا كَانَتْ سُعَادُ فِي السَّابِعَةِ مِنْ عُمْرِهَا";
+
+function normalizeArabic(text) {
+  return text
+    .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, "")
+    .replace(/[إأآا]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/ة/g, "ه")
+    .replace(/ـ/g, "")
+    .replace(/[^\u0621-\u064A\s]/g, "") // إزالة أي رموز غير عربية
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const targetWords = targetSentence.split(" ");
+const normalizedTargetWords = targetWords.map(normalizeArabic);
+
+// -----------------------------
+// عرض الجملة كاملة دائماً (بدون إخفاء)
+// -----------------------------
+const sentenceBox = document.getElementById("sentenceBox");
+function renderSentence(results = []) {
+  sentenceBox.innerHTML = "";
+  targetWords.forEach((w, i) => {
+    const span = document.createElement("span");
+    span.className = "word";
+    span.textContent = w;
+    if (results[i] === "correct") span.classList.add("correct");
+    if (results[i] === "wrong") span.classList.add("wrong");
+    sentenceBox.appendChild(span);
+  });
+}
+renderSentence();
+
+// -----------------------------
+// تشغيل النموذج الصوتي
+// -----------------------------
+const externalAudio = document.getElementById("externalAudio");
+document.getElementById("listenBtn").addEventListener("click", () => {
+  externalAudio.currentTime = 0;
+  externalAudio.play().catch(() => {
+    statusEl.textContent = "تعذّر تشغيل الملف الصوتي. تأكد من مساره: " + externalAudio.src;
+  });
+});
+
+// -----------------------------
+// التعرف على الصوت
+// -----------------------------
+const micBtn = document.getElementById("micBtn");
+const resetBtn = document.getElementById("resetBtn");
+const statusEl = document.getElementById("status");
+const promptArea = document.getElementById("promptArea");
+const resultCard = document.getElementById("resultCard");
+
+const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let readingStartTime = null;
+let readingEndTime = null;
+
+// -----------------------------
+// تسجيل صوت الطالب فعلياً (منفصل عن STT) عشان يقدر يسمعه بعدين
+// -----------------------------
+let mediaStream = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+const playbackAudio = document.getElementById("playbackAudio");
+
+async function startVoiceRecording() {
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    recordedChunks = [];
+    const mimeType = MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" : "";
+    mediaRecorder = mimeType ? new MediaRecorder(mediaStream, { mimeType }) : new MediaRecorder(mediaStream);
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+    mediaRecorder.start();
+  } catch (err) {
+    console.warn("تعذر بدء تسجيل الصوت للاستماع:", err);
+  }
+}
+
+function stopVoiceRecording() {
+  return new Promise((resolve) => {
+    if (!mediaRecorder || mediaRecorder.state === "inactive") { resolve(null); return; }
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || "audio/webm" });
+      mediaStream.getTracks().forEach(t => t.stop());
+      resolve(URL.createObjectURL(blob));
+    };
+    mediaRecorder.stop();
+  });
+}
+
+if (!SpeechRecognitionAPI) {
+  statusEl.textContent = "المتصفح لا يدعم التعرف على الصوت. جرّب Safari على iPhone أو Chrome.";
+  micBtn.disabled = true;
+} else {
+  recognition = new SpeechRecognitionAPI();
+  recognition.lang = "ar-SA";
+  recognition.continuous = false;     // جلسة واحدة أوضح وأدق من الجلسة المستمرة
+  recognition.interimResults = false; // ننتظر النتيجة النهائية فقط لتفادي نتائج مبتورة
+  recognition.maxAlternatives = 1;
+
+  recognition.onstart = () => {
+    readingStartTime = performance.now();
+    micBtn.classList.add("listening");
+    promptArea.style.visibility = "hidden";
+    statusEl.textContent = "🎙️ جاري الاستماع... اقرأ الآن بصوت واضح";
+    startVoiceRecording();
+  };
+
+  recognition.onerror = (e) => {
+    micBtn.classList.remove("listening");
+    micBtn.disabled = false;
+    if (e.error === "no-speech") {
+      statusEl.textContent = "لم أسمع شيئاً، حاول تضغط على الميكروفون وتقرأ بصوت أعلى.";
+    } else if (e.error === "not-allowed") {
+      statusEl.textContent = "لازم تسمح باستخدام الميكروفون من إعدادات المتصفح.";
+    } else {
+      statusEl.textContent = "حدث خطأ: " + e.error;
+    }
+  };
+
+  recognition.onend = () => {
+    micBtn.classList.remove("listening");
+    micBtn.disabled = false;
+    readingEndTime = performance.now();
+  };
+
+  recognition.onresult = async (event) => {
+    const transcript = event.results[0][0].transcript;
+    statusEl.textContent = "جاري تجهيز النتيجة...";
+
+    const audioUrl = await stopVoiceRecording();
+    if (audioUrl) playbackAudio.src = audioUrl;
+
+    document.getElementById("heardText").textContent = transcript || "—";
+    evaluateReading(transcript);
+  };
+}
+
+micBtn.addEventListener("click", () => {
+  if (!recognition) return;
+  resultCard.style.display = "none";
+  statusEl.textContent = "";
+  renderSentence();
+  micBtn.disabled = true;
+  micBtn.classList.add("counting");
+
+  // عد تنازلي بسيط يعطي الطالب وقت يجهّز نفسه ويقرأ العبارة بعينه قبل ما يبدأ التسجيل
+  let count = 3;
+  micBtn.textContent = count;
+  promptArea.style.visibility = "hidden";
+  statusEl.textContent = "استعد للقراءة...";
+
+  const countdownTimer = setInterval(() => {
+    count--;
+    if (count > 0) {
+      micBtn.textContent = count;
+    } else {
+      clearInterval(countdownTimer);
+      micBtn.textContent = "🎤";
+      micBtn.classList.remove("counting");
+      try { recognition.start(); } catch (e) { micBtn.disabled = false; }
+    }
+  }, 800);
+});
+
+resetBtn.addEventListener("click", () => {
+  if (recognition) { try { recognition.abort(); } catch(e) {} }
+  if (mediaRecorder && mediaRecorder.state !== "inactive") { try { mediaRecorder.stop(); } catch(e) {} }
+  renderSentence();
+  statusEl.textContent = "";
+  resultCard.style.display = "none";
+  document.getElementById("heardText").textContent = "—";
+  playbackAudio.removeAttribute("src");
+  promptArea.style.visibility = "visible";
+  micBtn.disabled = false;
+});
+
+// -----------------------------
+// مسافة ليفنشتاين (عدد التعديلات الحرفية بين كلمتين) لحساب نسبة تشابه دقيقة
+// -----------------------------
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,      // حذف
+        dp[i][j - 1] + 1,      // إضافة
+        dp[i - 1][j - 1] + cost // استبدال
+      );
+    }
+  }
+  return dp[m][n];
+}
+
+// نسبة تشابه من 0 إلى 1 (1 = مطابقة تامة)
+function wordSimilarity(a, b) {
+  if (!a || !b) return 0;
+  const dist = levenshtein(a, b);
+  const maxLen = Math.max(a.length, b.length);
+  return 1 - dist / maxLen;
+}
+
+const SIMILARITY_THRESHOLD = 0.72; // كلمة تُعتبر صحيحة لو تشابهها 72% أو أكثر (يتحمل أخطاء STT الطفيفة)
+
+// -----------------------------
+// المقارنة (غير مرتبة + متسامحة): لكل كلمة مستهدفة، ندوّر عن أقرب كلمة مسموعة تشبهها
+// -----------------------------
+function evaluateReading(transcript) {
+  const heardWords = normalizeArabic(transcript).split(" ").filter(Boolean);
+  const heardPool = [...heardWords];
+
+  const results = [];
+  let correctCount = 0;
+
+  targetWords.forEach((word, i) => {
+    const normTarget = normalizedTargetWords[i];
+
+    // نبحث عن أفضل تطابق (أعلى نسبة تشابه) بين الكلمات المتبقية من كلام الطالب
+    let bestIndex = -1;
+    let bestScore = 0;
+    heardPool.forEach((h, idx) => {
+      const score = wordSimilarity(normTarget, h);
+      if (score > bestScore) { bestScore = score; bestIndex = idx; }
+    });
+
+    if (bestIndex !== -1 && bestScore >= SIMILARITY_THRESHOLD) {
+      results.push("correct");
+      correctCount++;
+      heardPool.splice(bestIndex, 1); // استهلاك الكلمة عشان ما تُحسب مرتين
+    } else {
+      results.push("wrong");
+    }
+  });
+
+  renderSentence(results);
+
+  const percent = Math.round((correctCount / targetWords.length) * 100);
+  showResult(percent, correctCount, targetWords.length);
+}
+
+// -----------------------------
+// بطاقة النتيجة
+// -----------------------------
+function showResult(percent, correctCount, total) {
+  resultCard.style.display = "block";
+  promptArea.style.visibility = "visible";
+
+  const bigEmoji = document.getElementById("bigEmoji");
+  const scoreText = document.getElementById("scoreText");
+  const scoreSub = document.getElementById("scoreSub");
+  const thermoFill = document.getElementById("thermoFill");
+
+  let emoji, color, msg;
+  if (percent >= 85) {
+    emoji = "🌟"; color = "#3fb84f"; msg = "قراءة ممتازة!";
+  } else if (percent >= 60) {
+    emoji = "😊"; color = "#f5a623"; msg = "جيد جداً، حاول مرة ثانية لتتحسن أكثر";
+  } else {
+    emoji = "💪"; color = "#e04b4b"; msg = "لا بأس، حاول مرة أخرى ببطء ووضوح";
+  }
+
+  bigEmoji.textContent = emoji;
+  scoreText.textContent = percent + "%";
+  scoreText.style.color = color;
+
+  let timeText = "";
+  if (readingStartTime && readingEndTime) {
+    const seconds = ((readingEndTime - readingStartTime) / 1000).toFixed(1);
+    timeText = ` — الوقت: ${seconds} ث`;
+  }
+  scoreSub.textContent = `${msg} (${correctCount}/${total})${timeText}`;
+
+  thermoFill.style.height = "0%";
+  thermoFill.style.background = `linear-gradient(to top, #ff4d4d, ${color})`;
+  setTimeout(() => { thermoFill.style.height = percent + "%"; }, 100);
+}
+</script>
+
+</body>
+</html>
